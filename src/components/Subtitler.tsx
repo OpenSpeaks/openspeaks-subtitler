@@ -75,13 +75,11 @@ export const Subtitler = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-primary">OpenSpeaks Subtitler</h1>
-            <p className="text-sm text-muted-foreground">Professional subtitle editing made simple</p>
           </div>
           <div className="flex items-center gap-4">
-            <LanguageSelector 
-              selectedLanguage={selectedLanguage}
-              onLanguageChange={setSelectedLanguage}
-            />
+            <div className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+              Language: {selectedLanguage.toUpperCase()}
+            </div>
           </div>
         </div>
       </header>
@@ -90,7 +88,16 @@ export const Subtitler = () => {
       <div className="flex-1 flex flex-col">
         {!mediaFile ? (
           <div className="flex-1 flex items-center justify-center">
-            <FileUpload onFileUpload={handleFileUpload} />
+            <div className="space-y-6 text-center">
+              <div className="space-y-2">
+                <h2 className="text-lg font-medium">Choose subtitle language</h2>
+                <LanguageSelector 
+                  selectedLanguage={selectedLanguage}
+                  onLanguageChange={setSelectedLanguage}
+                />
+              </div>
+              <FileUpload onFileUpload={handleFileUpload} />
+            </div>
           </div>
         ) : (
           <>
@@ -102,6 +109,7 @@ export const Subtitler = () => {
                 onTimeUpdate={handleTimeUpdate}
                 onDurationChange={handleDurationChange}
                 onSeek={handleSeek}
+                currentSubtitle={selectedSubtitle}
               />
             </div>
             
@@ -139,6 +147,7 @@ export const Subtitler = () => {
                   subtitles={subtitles}
                   fileName={mediaFile?.name || ""}
                   selectedLanguage={selectedLanguage}
+                  onLanguageChange={setSelectedLanguage}
                 />
               </div>
             </div>

@@ -2,15 +2,23 @@ import { useRef, useEffect, useState } from "react";
 import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+interface Subtitle {
+  id: string;
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
 interface VideoPlayerProps {
   src: string;
   currentTime: number;
   onTimeUpdate: (time: number) => void;
   onDurationChange: (duration: number) => void;
   onSeek?: (time: number) => void;
+  currentSubtitle?: Subtitle | null;
 }
 
-export const VideoPlayer = ({ src, currentTime, onTimeUpdate, onDurationChange, onSeek }: VideoPlayerProps) => {
+export const VideoPlayer = ({ src, currentTime, onTimeUpdate, onDurationChange, onSeek, currentSubtitle }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -193,6 +201,18 @@ export const VideoPlayer = ({ src, currentTime, onTimeUpdate, onDurationChange, 
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center">
               {isPlaying ? <Pause className="w-8 h-8 text-white" /> : <Play className="w-8 h-8 ml-1 text-white" />}
+            </div>
+          </div>
+        )}
+        
+        {/* Subtitle overlay */}
+        {currentSubtitle && 
+         currentTime >= currentSubtitle.startTime && 
+         currentTime <= currentSubtitle.endTime && 
+         currentSubtitle.text.trim() && (
+          <div className="absolute bottom-4 left-4 right-4 flex justify-center">
+            <div className="bg-black/80 text-white px-3 py-2 rounded text-sm font-medium text-center max-w-full break-words">
+              {currentSubtitle.text}
             </div>
           </div>
         )}

@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Download, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { LanguageSelector } from "./LanguageSelector";
 
 interface Subtitle {
   id: string;
@@ -16,9 +17,10 @@ interface ExportPanelProps {
   subtitles: Subtitle[];
   fileName: string;
   selectedLanguage: string;
+  onLanguageChange: (language: string) => void;
 }
 
-export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPanelProps) => {
+export const ExportPanel = ({ subtitles, fileName, selectedLanguage, onLanguageChange }: ExportPanelProps) => {
   const [exportFormat, setExportFormat] = useState<'srt' | 'vtt' | 'txt' | 'txt-time'>('srt');
 
   const formatTime = (seconds: number, format: 'srt' | 'vtt') => {
@@ -123,6 +125,15 @@ export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPan
 
   return (
     <Card className="p-4">
+      {/* Language Selection */}
+      <div className="mb-4">
+        <div className="text-sm font-medium mb-2">Language</div>
+        <LanguageSelector 
+          selectedLanguage={selectedLanguage}
+          onLanguageChange={onLanguageChange}
+        />
+      </div>
+      
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold flex items-center gap-2">
           <Download className="w-4 h-4" />
