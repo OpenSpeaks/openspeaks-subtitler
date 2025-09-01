@@ -35,13 +35,28 @@ export const VideoPlayer = ({ src, currentTime, onTimeUpdate, onDurationChange, 
         return;
       }
       
-      // Check MIME type from blob URL
+      // For blob URLs, try to load as video first
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
       try {
-        const response = await fetch(src, { method: 'HEAD' });
-        const contentType = response.headers.get('content-type') || '';
-        setIsVideo(contentType.startsWith('video/'));
+        await new Promise((resolve, reject) => {
+          video.onloadedmetadata = () => {
+            // If video has width and height, it's a video
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              setIsVideo(true);
+            } else {
+              setIsVideo(false);
+            }
+            resolve(null);
+          };
+          video.onerror = () => {
+            setIsVideo(false);
+            resolve(null);
+          };
+          video.src = src;
+        });
       } catch {
-        // Fallback to false for audio
         setIsVideo(false);
       }
     };
@@ -101,30 +116,21 @@ export const VideoPlayer = ({ src, currentTime, onTimeUpdate, onDurationChange, 
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-black relative group">
+    <div className="w-full h-full flex items-center justify-center bg-black relative group cursor-pointer" onClick={handleMediaClick}>
       {isVideo ? (
         <video
           ref={videoRef}
           src={src}
-          className="max-w-full max-h-full cursor-pointer"
+          className="max-w-full max-h-full"
           preload="metadata"
-          onClick={handleMediaClick}
         />
       ) : (
-        <div className="text-center text-white cursor-pointer" onClick={handleMediaClick}>
+        <div className="text-center text-white w-full h-full flex flex-col items-center justify-center">
           <div className="mb-4 flex items-center justify-center">
             <div className="w-32 h-32 bg-primary/20 rounded-full flex items-center justify-center mb-4">
-              <Button
-                variant="secondary"
-                size="lg"
-                className="w-16 h-16 rounded-full bg-primary hover:bg-primary/80"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayPause();
-                }}
-              >
-                {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
-              </Button>
+              <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center">
+                {isPlaying ? <Pause className="w-8 h-8 text-white" /> : <Play className="w-8 h-8 ml-1 text-white" />}
+              </div>
             </div>
           </div>
           <audio
@@ -134,24 +140,16 @@ export const VideoPlayer = ({ src, currentTime, onTimeUpdate, onDurationChange, 
             className="hidden"
           />
           <div className="text-lg font-medium">Audio File</div>
-          <div className="text-sm text-gray-300 mt-2">Click to play/pause • Audio waveform shown in timeline</div>
+          <div className="text-sm text-gray-300 mt-2">Click anywhere to play/pause</div>
         </div>
       )}
       
       {/* Play/Pause overlay for video */}
       {isVideo && (
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 pointer-events-auto"
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayPause();
-            }}
-          >
-            {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
-          </Button>
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center">
+            {isPlaying ? <Pause className="w-8 h-8 text-white" /> : <Play className="w-8 h-8 ml-1 text-white" />}
+          </div>
         </div>
       )}
     </div>

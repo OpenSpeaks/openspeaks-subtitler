@@ -2,8 +2,7 @@ import { useState } from "react";
 import { FileUpload } from "./FileUpload";
 import { LanguageSelector } from "./LanguageSelector";
 import { Timeline } from "./Timeline";
-import { SubtitleEditor } from "./SubtitleEditor";
-import { SubtitleList } from "./SubtitleList";
+import { SubtitleWorkspace } from "./SubtitleWorkspace";
 import { ExportPanel } from "./ExportPanel";
 import { VideoPlayer } from "./VideoPlayer";
 
@@ -125,29 +124,18 @@ export const Subtitler = () => {
               />
             </div>
 
-            {/* Bottom Panel - Subtitle Editor and List */}
-            <div className="flex-1 flex min-h-0">
-              {/* Left - Subtitle Editor */}
-              <div className="w-96 border-r bg-card">
-                <SubtitleEditor 
-                  subtitle={selectedSubtitle}
-                  onSubtitleUpdate={handleSubtitleUpdate}
-                  language={selectedLanguage}
-                />
-              </div>
-              
-              {/* Right - Subtitle List */}
-              <div className="flex-1 bg-card">
-                <SubtitleList
-                  subtitles={subtitles}
-                  selectedSubtitle={selectedSubtitle}
-                  onSubtitleSelect={handleSubtitleSelect}
-                  onSubtitleUpdate={handleSubtitleUpdate}
-                  onSubtitleDelete={handleSubtitleDelete}
-                  onSeek={handleSeek}
-                  language={selectedLanguage}
-                />
-              </div>
+            {/* Bottom Panel - Subtitle Workspace */}
+            <div className="flex-1 flex min-h-0 p-4 bg-card">
+              <SubtitleWorkspace
+                subtitle={selectedSubtitle}
+                subtitles={subtitles}
+                onSubtitleUpdate={handleSubtitleUpdate}
+                onSubtitleDelete={handleSubtitleDelete}
+                onSubtitleSelect={handleSubtitleSelect}
+                onSubtitleCreate={handleSubtitleCreate}
+                onSeek={handleSeek}
+                language={selectedLanguage}
+              />
             </div>
           </>
         )}

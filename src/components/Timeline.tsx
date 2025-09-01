@@ -67,10 +67,10 @@ export const Timeline = ({
     
     if (clickedSubtitle) {
       onSubtitleSelect(clickedSubtitle);
-    } else {
-      // Seek to clicked time
-      onSeek(clickTime);
     }
+    
+    // Always seek to clicked time, even if on subtitle
+    onSeek(clickTime);
   };
 
   const handleTimelineDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -258,19 +258,22 @@ export const Timeline = ({
 
           {/* Enhanced Waveform visualization */}
           <div className="absolute top-8 w-full h-16 bg-gradient-to-r from-waveform/20 to-waveform/10">
-            <div className="w-full h-full flex items-center justify-center">
-              {/* Simulated waveform bars */}
-              {Array.from({ length: Math.floor(viewDuration * 10) }).map((_, i) => {
-                const height = Math.random() * 60 + 10; // Random height between 10-70%
-                const opacity = 0.3 + Math.random() * 0.4; // Random opacity 0.3-0.7
+            <div className="w-full h-full flex items-end justify-center gap-px">
+              {/* More realistic waveform bars */}
+              {Array.from({ length: Math.floor(viewDuration * 20) }).map((_, i) => {
+                // Create more realistic audio pattern
+                const time = (i / (viewDuration * 20)) * viewDuration + viewStart;
+                const baseFreq = Math.sin(time * 0.5) * 0.3 + 0.5;
+                const noise = Math.sin(time * 2.7) * 0.2;
+                const height = Math.max(5, (baseFreq + noise) * 80);
                 return (
                   <div
                     key={i}
-                    className="bg-waveform mx-0.5"
+                    className="bg-waveform"
                     style={{
-                      width: '2px',
+                      width: '1px',
                       height: `${height}%`,
-                      opacity: opacity
+                      opacity: 0.6
                     }}
                   />
                 );
