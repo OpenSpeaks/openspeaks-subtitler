@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Play, Pause } from "lucide-react";
+import { ZoomIn, ZoomOut, SkipBack, SkipForward } from "lucide-react";
 
 interface Subtitle {
   id: string;
@@ -16,6 +16,8 @@ interface TimelineProps {
   currentTime: number;
   onSubtitleSelect: (subtitle: Subtitle) => void;
   onSubtitleCreate: (startTime: number, endTime: number) => void;
+  onSubtitleUpdate: (subtitle: Subtitle) => void;
+  onSeek: (time: number) => void;
   selectedSubtitle: Subtitle | null;
 }
 
@@ -25,26 +27,38 @@ export const Timeline = ({
   currentTime, 
   onSubtitleSelect, 
   onSubtitleCreate,
+  onSubtitleUpdate,
+  onSeek,
   selectedSubtitle 
 }: TimelineProps) => {
   const [viewStart, setViewStart] = useState(0);
   const [viewDuration, setViewDuration] = useState(15); // 15 seconds visible
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragType, setDragType] = useState<'move' | 'resize-left' | 'resize-right' | null>(null);
+  const [dragSubtitle, setDragSubtitle] = useState<Subtitle | null>(null);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartTime, setDragStartTime] = useState(0);
   const timelineRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll timeline to follow current time
+  // Auto-scroll timeline to follow current time (but not when dragging)
   useEffect(() => {
-    if (currentTime < viewStart || currentTime > viewStart + viewDuration) {
+    if (!isDragging && (currentTime < viewStart || currentTime > viewStart + viewDuration)) {
       setViewStart(Math.max(0, currentTime - viewDuration / 2));
     }
-  }, [currentTime, viewStart, viewDuration]);
+  }, [currentTime, viewStart, viewDuration, isDragging]);
+
+  const getTimeFromPosition = useCallback((clientX: number) => {
+    if (!timelineRef.current) return 0;
+    const rect = timelineRef.current.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const timelineWidth = rect.width;
+    return viewStart + (clickX / timelineWidth) * viewDuration;
+  }, [viewStart, viewDuration]);
 
   const handleTimelineClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!timelineRef.current) return;
+    if (isDragging) return;
     
-    const rect = timelineRef.current.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const timelineWidth = rect.width;
-    const clickTime = viewStart + (clickX / timelineWidth) * viewDuration;
+    const clickTime = getTimeFromPosition(event.clientX);
     
     // Find if clicked on existing subtitle
     const clickedSubtitle = subtitles.find(sub => 
@@ -53,29 +67,124 @@ export const Timeline = ({
     
     if (clickedSubtitle) {
       onSubtitleSelect(clickedSubtitle);
+    } else {
+      // Seek to clicked time
+      onSeek(clickTime);
     }
   };
 
   const handleTimelineDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!timelineRef.current) return;
+    const clickTime = getTimeFromPosition(event.clientX);
     
-    const rect = timelineRef.current.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const timelineWidth = rect.width;
-    const clickTime = viewStart + (clickX / timelineWidth) * viewDuration;
+    // Check if double-clicked on existing subtitle
+    const clickedSubtitle = subtitles.find(sub => 
+      clickTime >= sub.startTime && clickTime <= sub.endTime
+    );
     
-    // Create new subtitle (3 seconds long by default)
-    const startTime = clickTime;
-    const endTime = Math.min(clickTime + 3, duration);
-    onSubtitleCreate(startTime, endTime);
+    // Only create new subtitle if not clicking on existing one
+    if (!clickedSubtitle) {
+      // Find the closest subtitle end time before this position
+      const previousSubtitles = subtitles.filter(sub => sub.endTime <= clickTime);
+      const lastEndTime = previousSubtitles.length > 0 
+        ? Math.max(...previousSubtitles.map(sub => sub.endTime))
+        : 0;
+      
+      // Find the closest subtitle start time after this position
+      const nextSubtitles = subtitles.filter(sub => sub.startTime >= clickTime);
+      const nextStartTime = nextSubtitles.length > 0 
+        ? Math.min(...nextSubtitles.map(sub => sub.startTime))
+        : duration;
+      
+      // Create subtitle starting after the last one ends
+      const startTime = Math.max(clickTime, lastEndTime);
+      const defaultDuration = 3;
+      const endTime = Math.min(startTime + defaultDuration, nextStartTime, duration);
+      
+      if (endTime > startTime) {
+        onSubtitleCreate(startTime, endTime);
+      }
+    }
   };
 
+  // Handle mouse drag operations
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !dragSubtitle || !timelineRef.current) return;
+
+      const currentX = e.clientX;
+      const deltaX = currentX - dragStartX;
+      const rect = timelineRef.current.getBoundingClientRect();
+      const deltaTime = (deltaX / rect.width) * viewDuration;
+
+      let updatedSubtitle = { ...dragSubtitle };
+
+      switch (dragType) {
+        case 'move': {
+          const newStartTime = Math.max(0, dragStartTime + deltaTime);
+          const duration = dragSubtitle.endTime - dragSubtitle.startTime;
+          updatedSubtitle.startTime = newStartTime;
+          updatedSubtitle.endTime = newStartTime + duration;
+          break;
+        }
+        case 'resize-left': {
+          const newStartTime = Math.max(0, Math.min(dragStartTime + deltaTime, dragSubtitle.endTime - 0.1));
+          updatedSubtitle.startTime = newStartTime;
+          break;
+        }
+        case 'resize-right': {
+          const newEndTime = Math.max(dragSubtitle.startTime + 0.1, dragStartTime + deltaTime);
+          updatedSubtitle.endTime = newEndTime;
+          break;
+        }
+      }
+
+      if (updatedSubtitle !== dragSubtitle) {
+        onSubtitleUpdate(updatedSubtitle);
+        setDragSubtitle(updatedSubtitle);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setDragType(null);
+      setDragSubtitle(null);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragSubtitle, dragType, dragStartX, dragStartTime, viewDuration, onSubtitleUpdate]);
+
   const zoomIn = () => {
-    setViewDuration(prev => Math.max(5, prev / 2));
+    setViewDuration(prev => Math.max(1, prev / 2));
   };
 
   const zoomOut = () => {
-    setViewDuration(prev => Math.min(duration, prev * 2));
+    if (duration > 0) {
+      setViewDuration(prev => {
+        const newDuration = Math.min(duration, prev * 2);
+        // If zooming out to see entire timeline, adjust view start
+        if (newDuration >= duration) {
+          setViewStart(0);
+          return duration;
+        }
+        return newDuration;
+      });
+    }
+  };
+
+  const panLeft = () => {
+    setViewStart(prev => Math.max(0, prev - viewDuration / 4));
+  };
+
+  const panRight = () => {
+    setViewStart(prev => Math.min(duration - viewDuration, prev + viewDuration / 4));
   };
 
   const generateTimeMarkers = () => {
@@ -113,14 +222,20 @@ export const Timeline = ({
       {/* Timeline Controls */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={panLeft} disabled={viewStart <= 0}>
+            <SkipBack className="w-4 h-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={zoomOut}>
             <ZoomOut className="w-4 h-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={zoomIn}>
             <ZoomIn className="w-4 h-4" />
           </Button>
+          <Button variant="outline" size="sm" onClick={panRight} disabled={viewStart + viewDuration >= duration}>
+            <SkipForward className="w-4 h-4" />
+          </Button>
           <span className="text-sm text-muted-foreground ml-2">
-            {viewDuration}s visible
+            {viewDuration >= duration ? 'Full timeline' : `${viewDuration.toFixed(1)}s visible`}
           </span>
         </div>
         <div className="text-sm text-muted-foreground">
@@ -141,18 +256,25 @@ export const Timeline = ({
             {generateTimeMarkers()}
           </div>
 
-          {/* Waveform placeholder */}
+          {/* Enhanced Waveform visualization */}
           <div className="absolute top-8 w-full h-16 bg-gradient-to-r from-waveform/20 to-waveform/10">
-            <div className="w-full h-full bg-waveform/30 opacity-50" 
-                 style={{
-                   background: `repeating-linear-gradient(
-                     90deg,
-                     transparent,
-                     transparent 2px,
-                     hsl(var(--waveform)) 2px,
-                     hsl(var(--waveform)) 3px
-                   )`
-                 }}>
+            <div className="w-full h-full flex items-center justify-center">
+              {/* Simulated waveform bars */}
+              {Array.from({ length: Math.floor(viewDuration * 10) }).map((_, i) => {
+                const height = Math.random() * 60 + 10; // Random height between 10-70%
+                const opacity = 0.3 + Math.random() * 0.4; // Random opacity 0.3-0.7
+                return (
+                  <div
+                    key={i}
+                    className="bg-waveform mx-0.5"
+                    style={{
+                      width: '2px',
+                      height: `${height}%`,
+                      opacity: opacity
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -168,7 +290,7 @@ export const Timeline = ({
             </div>
           )}
 
-          {/* Subtitle segments */}
+          {/* Subtitle segments with drag handles */}
           <div className="absolute top-24 w-full h-12">
             {subtitles.map((subtitle) => {
               if (subtitle.endTime < viewStart || subtitle.startTime > viewStart + viewDuration) {
@@ -184,7 +306,7 @@ export const Timeline = ({
               return (
                 <div
                   key={subtitle.id}
-                  className={`absolute h-8 rounded border-2 flex items-center px-2 text-xs font-medium cursor-pointer transition-all ${
+                  className={`absolute h-8 rounded border-2 flex items-center px-2 text-xs font-medium transition-all group ${
                     isSelected 
                       ? 'bg-subtitle-active/20 border-subtitle-active text-subtitle-active' 
                       : 'bg-subtitle-segment/20 border-subtitle-segment text-subtitle-segment hover:bg-subtitle-segment/30'
@@ -193,14 +315,52 @@ export const Timeline = ({
                     left: `${startPos}%`,
                     width: `${width}%`
                   }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSubtitleSelect(subtitle);
-                  }}
                 >
-                  <span className="truncate">
+                  {/* Left resize handle */}
+                  <div
+                    className="absolute -left-1 top-0 w-2 h-full bg-subtitle-active cursor-w-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setIsDragging(true);
+                      setDragType('resize-left');
+                      setDragSubtitle(subtitle);
+                      setDragStartX(e.clientX);
+                      setDragStartTime(subtitle.startTime);
+                    }}
+                  />
+                  
+                  {/* Main content - clickable and draggable */}
+                  <div
+                    className="flex-1 cursor-pointer truncate"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSubtitleSelect(subtitle);
+                    }}
+                    onMouseDown={(e) => {
+                      if (e.detail === 1) { // Single click
+                        setIsDragging(true);
+                        setDragType('move');
+                        setDragSubtitle(subtitle);
+                        setDragStartX(e.clientX);
+                        setDragStartTime(subtitle.startTime);
+                      }
+                    }}
+                  >
                     {subtitle.text || `[${formatTime(subtitle.startTime)} - ${formatTime(subtitle.endTime)}]`}
-                  </span>
+                  </div>
+                  
+                  {/* Right resize handle */}
+                  <div
+                    className="absolute -right-1 top-0 w-2 h-full bg-subtitle-active cursor-e-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setIsDragging(true);
+                      setDragType('resize-right');
+                      setDragSubtitle(subtitle);
+                      setDragStartX(e.clientX);
+                      setDragStartTime(subtitle.endTime);
+                    }}
+                  />
                 </div>
               );
             })}
@@ -210,7 +370,7 @@ export const Timeline = ({
 
       {/* Instructions */}
       <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground">
-        <span className="font-medium">Tips:</span> Click to select subtitle • Double-click to create new subtitle • Use zoom controls to adjust view
+        <span className="font-medium">Tips:</span> Click subtitle to select • Double-click empty space to create • Drag to move • Drag handles to resize • Use pan/zoom controls
       </div>
     </Card>
   );

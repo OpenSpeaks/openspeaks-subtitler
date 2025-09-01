@@ -3,6 +3,7 @@ import { FileUpload } from "./FileUpload";
 import { LanguageSelector } from "./LanguageSelector";
 import { Timeline } from "./Timeline";
 import { SubtitleEditor } from "./SubtitleEditor";
+import { SubtitleList } from "./SubtitleList";
 import { ExportPanel } from "./ExportPanel";
 import { VideoPlayer } from "./VideoPlayer";
 
@@ -35,6 +36,10 @@ export const Subtitler = () => {
     setDuration(dur);
   };
 
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+  };
+
   const handleSubtitleSelect = (subtitle: Subtitle) => {
     setSelectedSubtitle(subtitle);
   };
@@ -44,6 +49,13 @@ export const Subtitler = () => {
       prev.map(sub => sub.id === subtitle.id ? subtitle : sub)
     );
     setSelectedSubtitle(subtitle);
+  };
+
+  const handleSubtitleDelete = (id: string) => {
+    setSubtitles(prev => prev.filter(sub => sub.id !== id));
+    if (selectedSubtitle?.id === id) {
+      setSelectedSubtitle(null);
+    }
   };
 
   const handleSubtitleCreate = (startTime: number, endTime: number) => {
@@ -81,49 +93,63 @@ export const Subtitler = () => {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex">
-        {/* Left Panel - Video and Timeline */}
-        <div className="flex-1 flex flex-col">
-          {!mediaFile ? (
-            <div className="flex-1 flex items-center justify-center">
-              <FileUpload onFileUpload={handleFileUpload} />
+      <div className="flex-1 flex flex-col">
+        {!mediaFile ? (
+          <div className="flex-1 flex items-center justify-center">
+            <FileUpload onFileUpload={handleFileUpload} />
+          </div>
+        ) : (
+          <>
+            {/* Video Player */}
+            <div className="h-64 bg-black flex items-center justify-center">
+              <VideoPlayer 
+                src={mediaUrl}
+                currentTime={currentTime}
+                onTimeUpdate={handleTimeUpdate}
+                onDurationChange={handleDurationChange}
+                onSeek={handleSeek}
+              />
             </div>
-          ) : (
-            <>
-              {/* Video Player */}
-              <div className="h-64 bg-black flex items-center justify-center">
-                <VideoPlayer 
-                  src={mediaUrl}
-                  currentTime={currentTime}
-                  onTimeUpdate={handleTimeUpdate}
-                  onDurationChange={handleDurationChange}
+            
+            {/* Timeline */}
+            <div className="h-64 min-h-0">
+              <Timeline 
+                subtitles={subtitles}
+                duration={duration}
+                currentTime={currentTime}
+                onSubtitleSelect={handleSubtitleSelect}
+                onSubtitleCreate={handleSubtitleCreate}
+                onSubtitleUpdate={handleSubtitleUpdate}
+                onSeek={handleSeek}
+                selectedSubtitle={selectedSubtitle}
+              />
+            </div>
+
+            {/* Bottom Panel - Subtitle Editor and List */}
+            <div className="flex-1 flex min-h-0">
+              {/* Left - Subtitle Editor */}
+              <div className="w-96 border-r bg-card">
+                <SubtitleEditor 
+                  subtitle={selectedSubtitle}
+                  onSubtitleUpdate={handleSubtitleUpdate}
+                  language={selectedLanguage}
                 />
               </div>
               
-              {/* Timeline */}
-              <div className="flex-1 min-h-0">
-                <Timeline 
+              {/* Right - Subtitle List */}
+              <div className="flex-1 bg-card">
+                <SubtitleList
                   subtitles={subtitles}
-                  duration={duration}
-                  currentTime={currentTime}
-                  onSubtitleSelect={handleSubtitleSelect}
-                  onSubtitleCreate={handleSubtitleCreate}
                   selectedSubtitle={selectedSubtitle}
+                  onSubtitleSelect={handleSubtitleSelect}
+                  onSubtitleUpdate={handleSubtitleUpdate}
+                  onSubtitleDelete={handleSubtitleDelete}
+                  onSeek={handleSeek}
+                  language={selectedLanguage}
                 />
               </div>
-            </>
-          )}
-        </div>
-
-        {/* Right Panel - Subtitle Editor */}
-        {mediaFile && (
-          <div className="w-96 border-l bg-card">
-            <SubtitleEditor 
-              subtitle={selectedSubtitle}
-              onSubtitleUpdate={handleSubtitleUpdate}
-              language={selectedLanguage}
-            />
-          </div>
+            </div>
+          </>
         )}
       </div>
 

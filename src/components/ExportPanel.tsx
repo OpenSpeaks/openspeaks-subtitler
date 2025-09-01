@@ -64,7 +64,7 @@ export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPan
 
   const handleExport = () => {
     if (subtitles.length === 0) {
-      toast.error("No subtitles to export");
+      toast.error("No subtitles to export. Create some subtitles first.");
       return;
     }
 
@@ -80,7 +80,7 @@ export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPan
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success(`Subtitles exported as ${exportFormat.toUpperCase()}`);
+    toast.success(`Exported ${subtitles.length} subtitles as ${exportFormat.toUpperCase()}`);
   };
 
   return (
