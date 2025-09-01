@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, SkipBack, SkipForward } from "lucide-react";
+import { AudioWaveform } from "./AudioWaveform";
 
 interface Subtitle {
   id: string;
@@ -19,6 +20,7 @@ interface TimelineProps {
   onSubtitleUpdate: (subtitle: Subtitle) => void;
   onSeek: (time: number) => void;
   selectedSubtitle: Subtitle | null;
+  mediaUrl?: string;
 }
 
 export const Timeline = ({ 
@@ -29,7 +31,8 @@ export const Timeline = ({
   onSubtitleCreate,
   onSubtitleUpdate,
   onSeek,
-  selectedSubtitle 
+  selectedSubtitle,
+  mediaUrl 
 }: TimelineProps) => {
   const [viewStart, setViewStart] = useState(0);
   const [viewDuration, setViewDuration] = useState(15); // 15 seconds visible
@@ -258,27 +261,34 @@ export const Timeline = ({
 
           {/* Enhanced Waveform visualization */}
           <div className="absolute top-8 w-full h-16 bg-gradient-to-r from-waveform/20 to-waveform/10">
-            <div className="w-full h-full flex items-end justify-center gap-px">
-              {/* More realistic waveform bars */}
-              {Array.from({ length: Math.floor(viewDuration * 20) }).map((_, i) => {
-                // Create more realistic audio pattern
-                const time = (i / (viewDuration * 20)) * viewDuration + viewStart;
-                const baseFreq = Math.sin(time * 0.5) * 0.3 + 0.5;
-                const noise = Math.sin(time * 2.7) * 0.2;
-                const height = Math.max(5, (baseFreq + noise) * 80);
-                return (
-                  <div
-                    key={i}
-                    className="bg-waveform"
-                    style={{
-                      width: '1px',
-                      height: `${height}%`,
-                      opacity: 0.6
-                    }}
-                  />
-                );
-              })}
-            </div>
+            {mediaUrl ? (
+              <AudioWaveform 
+                src={mediaUrl}
+                viewStart={viewStart}
+                viewDuration={viewDuration}
+              />
+            ) : (
+              <div className="w-full h-full flex items-end justify-center gap-px">
+                {/* Fallback fake waveform bars */}
+                {Array.from({ length: Math.floor(viewDuration * 20) }).map((_, i) => {
+                  const time = (i / (viewDuration * 20)) * viewDuration + viewStart;
+                  const baseFreq = Math.sin(time * 0.5) * 0.3 + 0.5;
+                  const noise = Math.sin(time * 2.7) * 0.2;
+                  const height = Math.max(5, (baseFreq + noise) * 80);
+                  return (
+                    <div
+                      key={i}
+                      className="bg-waveform"
+                      style={{
+                        width: '1px',
+                        height: `${height}%`,
+                        opacity: 0.6
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Current time indicator */}

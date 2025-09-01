@@ -82,11 +82,6 @@ export const Subtitler = () => {
               selectedLanguage={selectedLanguage}
               onLanguageChange={setSelectedLanguage}
             />
-            <ExportPanel 
-              subtitles={subtitles}
-              fileName={mediaFile?.name || ""}
-              selectedLanguage={selectedLanguage}
-            />
           </div>
         </div>
       </header>
@@ -121,21 +116,31 @@ export const Subtitler = () => {
                 onSubtitleUpdate={handleSubtitleUpdate}
                 onSeek={handleSeek}
                 selectedSubtitle={selectedSubtitle}
+                mediaUrl={mediaUrl}
               />
             </div>
 
-            {/* Bottom Panel - Subtitle Workspace */}
-            <div className="flex-1 flex min-h-0 p-4 bg-card">
-              <SubtitleWorkspace
-                subtitle={selectedSubtitle}
-                subtitles={subtitles}
-                onSubtitleUpdate={handleSubtitleUpdate}
-                onSubtitleDelete={handleSubtitleDelete}
-                onSubtitleSelect={handleSubtitleSelect}
-                onSubtitleCreate={handleSubtitleCreate}
-                onSeek={handleSeek}
-                language={selectedLanguage}
-              />
+            {/* Bottom Panel - Subtitle Workspace & Download */}
+            <div className="flex-1 flex min-h-0 p-4 bg-card gap-4">
+              <div className="flex-1">
+                <SubtitleWorkspace
+                  subtitle={selectedSubtitle}
+                  subtitles={subtitles}
+                  onSubtitleUpdate={handleSubtitleUpdate}
+                  onSubtitleDelete={handleSubtitleDelete}
+                  onSubtitleSelect={handleSubtitleSelect}
+                  onSubtitleCreate={handleSubtitleCreate}
+                  onSeek={handleSeek}
+                  language={selectedLanguage}
+                />
+              </div>
+              <div className="w-80">
+                <ExportPanel 
+                  subtitles={subtitles}
+                  fileName={mediaFile?.name || ""}
+                  selectedLanguage={selectedLanguage}
+                />
+              </div>
             </div>
           </>
         )}

@@ -19,7 +19,7 @@ interface ExportPanelProps {
 }
 
 export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPanelProps) => {
-  const [exportFormat, setExportFormat] = useState<'srt' | 'vtt'>('srt');
+  const [exportFormat, setExportFormat] = useState<'srt' | 'vtt' | 'txt' | 'txt-time'>('srt');
 
   const formatTime = (seconds: number, format: 'srt' | 'vtt') => {
     const hours = Math.floor(seconds / 3600);
@@ -54,12 +54,32 @@ export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPan
     return `WEBVTT\n\n${subtitleContent}`;
   };
 
+  const generatePlainText = () => {
+    return subtitles
+      .sort((a, b) => a.startTime - b.startTime)
+      .map((subtitle) => subtitle.text)
+      .filter(text => text.trim())
+      .join('\n');
+  };
+
+  const generatePlainTextWithTime = () => {
+    return subtitles
+      .sort((a, b) => a.startTime - b.startTime)
+      .map((subtitle) => {
+        const timeRange = `[${formatTime(subtitle.startTime, 'srt')} --> ${formatTime(subtitle.endTime, 'srt')}]`;
+        return `${timeRange}\n${subtitle.text}`;
+      })
+      .filter(entry => entry.includes('\n') && entry.split('\n')[1].trim())
+      .join('\n\n');
+  };
+
   const generateFileName = () => {
-    if (!fileName) return `subtitles-${selectedLanguage}.${exportFormat}`;
+    if (!fileName) return `subtitles-${selectedLanguage}.${exportFormat === 'txt-time' ? 'txt' : exportFormat}`;
     
     // Remove extension from original filename
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-    return `${nameWithoutExt}-${selectedLanguage}.${exportFormat}`;
+    const extension = exportFormat === 'txt-time' ? 'txt' : exportFormat;
+    return `${nameWithoutExt}-${selectedLanguage}.${extension}`;
   };
 
   const handleExport = () => {
@@ -68,7 +88,24 @@ export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPan
       return;
     }
 
-    const content = exportFormat === 'srt' ? generateSRT() : generateVTT();
+    let content = '';
+    switch (exportFormat) {
+      case 'srt':
+        content = generateSRT();
+        break;
+      case 'vtt':
+        content = generateVTT();
+        break;
+      case 'txt':
+        content = generatePlainText();
+        break;
+      case 'txt-time':
+        content = generatePlainTextWithTime();
+        break;
+      default:
+        content = generateSRT();
+    }
+
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     
@@ -80,25 +117,47 @@ export const ExportPanel = ({ subtitles, fileName, selectedLanguage }: ExportPan
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success(`Exported ${subtitles.length} subtitles as ${exportFormat.toUpperCase()}`);
+    const formatName = exportFormat === 'txt-time' ? 'Plain text with timestamps' : exportFormat.toUpperCase();
+    toast.success(`Downloaded ${subtitles.length} subtitles as ${formatName}`);
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Select value={exportFormat} onValueChange={(value: 'srt' | 'vtt') => setExportFormat(value)}>
-        <SelectTrigger className="w-24">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="srt">SRT</SelectItem>
-          <SelectItem value="vtt">VTT</SelectItem>
-        </SelectContent>
-      </Select>
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Download className="w-4 h-4" />
+          Download Subtitles
+        </h3>
+        <div className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+          {subtitles.length} subtitles
+        </div>
+      </div>
       
-      <Button onClick={handleExport} disabled={subtitles.length === 0}>
-        <Download className="w-4 h-4 mr-2" />
-        Export
-      </Button>
-    </div>
+      <div className="flex items-center gap-2">
+        <Select value={exportFormat} onValueChange={(value: 'srt' | 'vtt' | 'txt' | 'txt-time') => setExportFormat(value)}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="srt">SRT</SelectItem>
+            <SelectItem value="vtt">VTT</SelectItem>
+            <SelectItem value="txt">Plain Text</SelectItem>
+            <SelectItem value="txt-time">Text + Time</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Button onClick={handleExport} disabled={subtitles.length === 0}>
+          <Download className="w-4 h-4 mr-2" />
+          Download
+        </Button>
+      </div>
+      
+      <div className="text-xs text-muted-foreground mt-2">
+        {exportFormat === 'srt' && 'SubRip subtitle format'}
+        {exportFormat === 'vtt' && 'WebVTT subtitle format'}
+        {exportFormat === 'txt' && 'Plain text without timestamps'}
+        {exportFormat === 'txt-time' && 'Plain text with timestamps'}
+      </div>
+    </Card>
   );
 };

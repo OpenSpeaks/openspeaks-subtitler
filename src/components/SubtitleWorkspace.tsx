@@ -149,23 +149,39 @@ export const SubtitleWorkspace = ({
     .sort((a, b) => a.startTime - b.startTime);
 
   return (
-    <div className="h-full flex gap-4">
-      {/* Left Panel - Current Subtitle Editor */}
-      <div className="w-96">
-        <Card className="h-full flex flex-col">
-          {/* Editor Header */}
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Type className="w-4 h-4" />
-                Subtitle Editor
-              </h3>
-              <div className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
-                {language.toUpperCase()}
-              </div>
+    <Card className="h-full flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Type className="w-4 h-4" />
+            Subtitle Editor & List
+          </h3>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+              {subtitles.length} items
+            </div>
+            <div className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+              {language.toUpperCase()}
             </div>
           </div>
+        </div>
+        
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search subtitles..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-9"
+          />
+        </div>
+      </div>
 
+      <div className="flex-1 flex">
+        {/* Left side - Current Subtitle Editor */}
+        <div className="w-96 border-r">
           {subtitle ? (
             <>
               {/* Editor Content */}
@@ -278,36 +294,10 @@ export const SubtitleWorkspace = ({
               </div>
             </div>
           )}
-        </Card>
-      </div>
+        </div>
 
-      {/* Right Panel - Subtitle List */}
-      <div className="flex-1">
-        <Card className="h-full flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Edit3 className="w-4 h-4" />
-                All Subtitles
-              </h3>
-              <div className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
-                {subtitles.length} items
-              </div>
-            </div>
-            
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search subtitles..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9"
-              />
-            </div>
-          </div>
-
+        {/* Right side - Subtitle List */}
+        <div className="flex-1 flex flex-col">
           {/* Subtitle List */}
           <ScrollArea className="flex-1">
             <div className="p-2">
@@ -383,8 +373,8 @@ export const SubtitleWorkspace = ({
           <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground">
             <span className="font-medium">Tips:</span> Click to select & jump • Press Enter in text to create new subtitle
           </div>
-        </Card>
+        </div>
       </div>
-    </div>
+    </Card>
   );
 };
