@@ -52,6 +52,18 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				timeline: {
+					DEFAULT: 'hsl(var(--timeline-bg))',
+					grid: 'hsl(var(--timeline-grid))'
+				},
+				waveform: 'hsl(var(--waveform))',
+				subtitle: {
+					segment: 'hsl(var(--subtitle-segment))',
+					active: 'hsl(var(--subtitle-active))'
+				},
+				video: {
+					controls: 'hsl(var(--video-controls))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
