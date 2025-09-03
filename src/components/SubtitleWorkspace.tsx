@@ -40,8 +40,12 @@ export const SubtitleWorkspace = ({
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    setLocalSubtitle(subtitle);
-  }, [subtitle]);
+    // Only update local state if the selected subtitle actually changed (different ID)
+    // or if local subtitle is null/empty
+    if (!localSubtitle || !subtitle || localSubtitle.id !== subtitle.id) {
+      setLocalSubtitle(subtitle);
+    }
+  }, [subtitle?.id]); // Only depend on subtitle ID to avoid race conditions
 
   // Auto-save when local subtitle changes
   useEffect(() => {
@@ -54,12 +58,12 @@ export const SubtitleWorkspace = ({
       if (hasChanges) {
         const timeoutId = setTimeout(() => {
           onSubtitleUpdate(localSubtitle);
-        }, 500); // Auto-save after 500ms of no changes
+        }, 200); // Reduced delay for more responsive updates
         
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [localSubtitle, subtitle, onSubtitleUpdate]);
+  }, [localSubtitle, onSubtitleUpdate]); // Removed subtitle from dependencies to prevent reset
 
   const formatTime = (time: number) => {
     const hours = Math.floor(time / 3600);
