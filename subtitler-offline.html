@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenSpeaks Subtitler - Professional Subtitle Editor</title>
+    <meta name="description" content="Professional offline subtitle editor supporting South Asian languages with timeline editing and waveform visualization" />
+    <style>
+        /* Design System Colors */
+        :root {
+            --background: hsl(0, 0%, 98%);
+            --foreground: hsl(210, 24%, 16%);
+            --card: hsl(0, 0%, 100%);
+            --card-foreground: hsl(210, 24%, 16%);
+            --primary: hsl(172, 76%, 38%);
+            --primary-foreground: hsl(0, 0%, 98%);
+            --secondary: hsl(172, 20%, 94%);
+            --secondary-foreground: hsl(172, 76%, 38%);
+            --muted: hsl(172, 20%, 96%);
+            --muted-foreground: hsl(210, 24%, 50%);
+            --accent: hsl(172, 86%, 44%);
+            --accent-foreground: hsl(0, 0%, 98%);
+            --destructive: hsl(0, 84%, 60%);
+            --destructive-foreground: hsl(0, 0%, 98%);
+            --border: hsl(210, 20%, 88%);
+            --input: hsl(210, 20%, 88%);
+            --ring: hsl(172, 76%, 38%);
+            --timeline-bg: hsl(210, 20%, 95%);
+            --timeline-grid: hsl(210, 20%, 85%);
+            --waveform: hsl(172, 60%, 60%);
+            --subtitle-segment: hsl(172, 76%, 38%);
+            --subtitle-active: hsl(172, 86%, 44%);
+            --video-controls: hsl(210, 24%, 16%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.6;
+        }
+
+        .container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            border-bottom: 1px solid var(--border);
+            background-color: var(--card);
+            padding: 1rem 1.5rem;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .language-badge {
+            font-size: 0.75rem;
+            color: var(--muted-foreground);
+            background-color: rgba(172, 20%, 94%, 0.5);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .upload-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .upload-container {
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .language-selector {
+            margin-bottom: 2rem;
+        }
+
+        .language-selector h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .select-wrapper {
+            position: relative;
+            display: inline-block;
+            min-width: 200px;
+        }
+
+        .select-input {
+            width: 100%;
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            background-color: var(--card);
+            color: var(--foreground);
+            font-size: 0.875rem;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .select-arrow {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .upload-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(172, 76%, 38%, 0.3);
+            border-radius: 0.5rem;
+            padding: 3rem;
+            text-align: center;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(172, 76%, 38%, 0.5);
+        }
+
+        .upload-icon {
+            width: 3rem;
+            height: 3rem;
+            background-color: rgba(172, 76%, 38%, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2rem;
+        }
+
+        .upload-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-description {
+            color: var(--muted-foreground);
+            margin-bottom: 1.5rem;
+        }
+
+        .file-types {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+        }
+
+        .file-type {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: var(--secondary-foreground);
+        }
+
+        .btn-destructive {
+            background-color: var(--destructive);
+            color: var(--destructive-foreground);
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .video-player {
+            height: 16rem;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .video-controls {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+
+        .video-control-btn {
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .video-control-btn:hover {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .media-element {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .audio-player {
+            text-align: center;
+            color: white;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .audio-icon {
+            width: 8rem;
+            height: 8rem;
+            background-color: rgba(172, 76%, 38%, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        .audio-play-btn {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 50%;
+            background-color: rgba(172, 76%, 38%, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .subtitle-overlay {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            right: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .subtitle-text {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-align: center;
+            max-width: 100%;
+            word-break: break-word;
+        }
+
+        .timeline {
+            height: 16rem;
+            min-height: 0;
+        }
+
+        .timeline-card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .timeline-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .timeline-content {
+            flex: 1;
+            position: relative;
+            background-color: var(--timeline-bg);
+            overflow: hidden;
+        }
+
+        .timeline-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .bottom-panel {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            padding: 1rem;
+            background-color: var(--card);
+            gap: 1rem;
+        }
+
+        .subtitle-workspace {
+            flex: 1;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .workspace-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .workspace-content {
+            flex: 1;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .timing-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 0.5rem;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .form-input {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            background-color: var(--card);
+            color: var(--foreground);
+            font-size: 0.875rem;
+        }
+
+        .form-textarea {
+            min-height: 4rem;
+            resize: vertical;
+        }
+
+        .subtitle-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .subtitle-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+        }
+
+        .subtitle-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .subtitle-item:hover {
+            background-color: var(--muted);
+        }
+
+        .subtitle-item.active {
+            background-color: var(--accent);
+            color: var(--accent-foreground);
+        }
+
+        .subtitle-item:last-child {
+            border-bottom: none;
+        }
+
+        .subtitle-timing {
+            font-size: 0.75rem;
+            color: var(--muted-foreground);
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle-preview {
+            font-size: 0.875rem;
+        }
+
+        .stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--muted-foreground);
+        }
+
+        .stats-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+        }
+
+        .stats-label {
+            font-weight: 500;
+        }
+
+        .stats-value {
+            font-weight: normal;
+        }
+
+        .guidelines {
+            font-size: 0.75rem;
+            color: var(--muted-foreground);
+        }
+
+        .guideline-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .guideline-good {
+            color: var(--primary);
+        }
+
+        .guideline-warning {
+            color: #f59e0b;
+        }
+
+        .guideline-error {
+            color: var(--destructive);
+        }
+
+        .export-panel {
+            width: 20rem;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .export-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .export-content {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .toast.success {
+            border-color: var(--primary);
+            background-color: var(--secondary);
+        }
+
+        .toast.error {
+            border-color: var(--destructive);
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+        }
+
+        @media (max-width: 768px) {
+            .bottom-panel {
+                flex-direction: column;
+            }
+            .export-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div>
+                    <h1>OpenSpeaks Subtitler</h1>
+                </div>
+                <div>
+                    <div class="language-badge">
+                        Language: <span id="currentLanguage">EN</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div id="uploadSection" class="upload-section">
+                <div class="upload-container">
+                    <div class="language-selector">
+                        <h2>Choose subtitle language</h2>
+                        <div class="select-wrapper">
+                            <select id="languageSelect" class="select-input">
+                                <option value="hi">Hindi (हिन्दी)</option>
+                                <option value="en">English</option>
+                                <option value="bn">Bengali (বাংলা)</option>
+                                <option value="te">Telugu (తెలుగు)</option>
+                                <option value="ta">Tamil (தமிழ்)</option>
+                                <option value="mr">Marathi (मराठी)</option>
+                                <option value="gu">Gujarati (ગુજરાતી)</option>
+                                <option value="kn">Kannada (ಕನ್ನಡ)</option>
+                                <option value="or">Odia (ଓଡ଼ିଆ)</option>
+                                <option value="pa">Punjabi (ਪੰਜਾਬੀ)</option>
+                                <option value="as">Assamese (অসমীয়া)</option>
+                                <option value="ml">Malayalam (മലയാളം)</option>
+                                <option value="ur">Urdu (اردو)</option>
+                                <option value="ne">Nepali (नेपाली)</option>
+                                <option value="si">Sinhala (සිංහල)</option>
+                                <option value="my">Myanmar (မြန်မာ)</option>
+                                <option value="custom">Custom Language</option>
+                            </select>
+                            <span class="select-arrow">▼</span>
+                        </div>
+                        <input type="text" id="customLanguage" class="form-input hidden" placeholder="Enter language name" style="margin-top: 0.5rem;">
+                    </div>
+                    <div class="upload-card">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon">⬆</div>
+                            <h3 class="upload-title">Upload your media file</h3>
+                            <p class="upload-description">Drag and drop or click to select a video or audio file</p>
+                            <div class="file-types">
+                                <div class="file-type">
+                                    <span>🎥</span>
+                                    <span>Video files</span>
+                                </div>
+                                <div class="file-type">
+                                    <span>🎵</span>
+                                    <span>Audio files</span>
+                                </div>
+                            </div>
+                            <button class="btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                            <input type="file" id="fileInput" class="hidden" accept="video/*,audio/*">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Media Player -->
+            <div id="mediaSection" class="hidden">
+                <div class="video-player">
+                    <div class="video-controls">
+                        <button class="video-control-btn" onclick="skipBackward()">⏪ -10s</button>
+                        <button class="video-control-btn" onclick="skipForward()">⏩ +10s</button>
+                    </div>
+                    <div class="media-container" onclick="togglePlayPause()">
+                        <video id="videoElement" class="media-element hidden"></video>
+                        <audio id="audioElement" class="media-element hidden"></audio>
+                        <div id="audioPlayer" class="audio-player hidden">
+                            <div class="audio-icon">
+                                <div class="audio-play-btn" id="audioPlayBtn">▶</div>
+                            </div>
+                            <div style="font-size: 1.125rem; font-weight: 500;">Audio File</div>
+                            <div style="font-size: 0.875rem; color: #ccc; margin-top: 0.5rem;">Click anywhere to play/pause</div>
+                        </div>
+                    </div>
+                    <div class="subtitle-overlay hidden" id="subtitleOverlay">
+                        <div class="subtitle-text" id="subtitleText"></div>
+                    </div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="timeline">
+                    <div class="timeline-card">
+                        <div class="timeline-header">
+                            <h3 class="timeline-title">Timeline</h3>
+                            <div class="timeline-controls">
+                                <button class="btn btn-sm" onclick="panLeft()">◀ Pan</button>
+                                <button class="btn btn-sm" onclick="panRight()">Pan ▶</button>
+                                <button class="btn btn-sm" onclick="zoomIn()">🔍+ Zoom</button>
+                                <button class="btn btn-sm" onclick="zoomOut()">🔍- Zoom</button>
+                                <span style="font-size: 0.75rem; color: var(--muted-foreground);">
+                                    <span id="currentTimeDisplay">0:00</span> / <span id="durationDisplay">0:00</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="timeline-content">
+                            <canvas id="timelineCanvas" class="timeline-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Panel -->
+                <div class="bottom-panel">
+                    <!-- Subtitle Workspace -->
+                    <div class="subtitle-workspace">
+                        <div class="workspace-header">
+                            <h3>Subtitle Editor & List</h3>
+                        </div>
+                        <div class="workspace-content">
+                            <div class="timing-controls">
+                                <div class="form-group">
+                                    <label class="form-label">Start Time</label>
+                                    <input type="text" id="startTime" class="form-input" placeholder="0:00.000">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">End Time</label>
+                                    <input type="text" id="endTime" class="form-input" placeholder="0:00.000">
+                                </div>
+                                <div class="subtitle-actions">
+                                    <button class="btn btn-sm" onclick="insertSubtitle()">➕ Insert</button>
+                                    <button class="btn btn-sm btn-destructive" onclick="deleteSubtitle()">🗑 Delete</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Subtitle Text</label>
+                                <textarea id="subtitleText" class="form-input form-textarea" placeholder="Enter subtitle text here..."></textarea>
+                            </div>
+
+                            <div class="stats">
+                                <div class="stats-item">
+                                    <span class="stats-label">Duration</span>
+                                    <span class="stats-value" id="durationStat">0.0s</span>
+                                </div>
+                                <div class="stats-item">
+                                    <span class="stats-label">Words</span>
+                                    <span class="stats-value" id="wordsStat">0</span>
+                                </div>
+                                <div class="stats-item">
+                                    <span class="stats-label">WPM</span>
+                                    <span class="stats-value" id="wpmStat">0</span>
+                                </div>
+                            </div>
+
+                            <div class="guidelines">
+                                <div class="guideline-item">
+                                    <span>Duration</span>
+                                    <span id="durationGuideline">Good</span>
+                                </div>
+                                <div class="guideline-item">
+                                    <span>Reading Speed</span>
+                                    <span id="speedGuideline">Good</span>
+                                </div>
+                            </div>
+
+                            <div class="subtitle-list" id="subtitleList">
+                                <div style="padding: 1rem; text-align: center; color: var(--muted-foreground); font-size: 0.875rem;">
+                                    No subtitles yet. Double-click on the timeline to create one.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Panel -->
+                    <div class="export-panel">
+                        <div class="export-header">
+                            <h3>Download Subtitles</h3>
+                        </div>
+                        <div class="export-content">
+                            <div class="form-group">
+                                <label class="form-label">Language</label>
+                                <div class="select-wrapper">
+                                    <select id="exportLanguageSelect" class="select-input">
+                                        <option value="hi">Hindi (हिन्दी)</option>
+                                        <option value="en">English</option>
+                                        <option value="bn">Bengali (বাংলা)</option>
+                                        <option value="te">Telugu (తెలుగు)</option>
+                                        <option value="ta">Tamil (தமிழ்)</option>
+                                        <option value="mr">Marathi (मराठी)</option>
+                                        <option value="gu">Gujarati (ગુજરાતી)</option>
+                                        <option value="kn">Kannada (ಕನ್ನಡ)</option>
+                                        <option value="or">Odia (ଓଡ଼ିଆ)</option>
+                                        <option value="pa">Punjabi (ਪੰਜਾਬੀ)</option>
+                                        <option value="as">Assamese (অসমীয়া)</option>
+                                        <option value="ml">Malayalam (മലയാളം)</option>
+                                        <option value="ur">Urdu (اردو)</option>
+                                        <option value="ne">Nepali (नेपाली)</option>
+                                        <option value="si">Sinhala (සිංහල)</option>
+                                        <option value="my">Myanmar (မြန်မာ)</option>
+                                    </select>
+                                    <span class="select-arrow">▼</span>
+                                </div>
+                            </div>
+
+                            <div class="export-options">
+                                <button class="btn" onclick="downloadSRT()">⬇ Download SRT</button>
+                                <button class="btn" onclick="downloadVTT()">⬇ Download VTT</button>
+                                <button class="btn" onclick="downloadPlaintext(true)">⬇ Plaintext with timestamps</button>
+                                <button class="btn" onclick="downloadPlaintext(false)">⬇ Plaintext only</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            © 2025. Subhashish Panigrahi. MIT License.
+        </footer>
+    </div>
+
+    <script>
+        // Global state
+        let mediaFile = null;
+        let mediaUrl = '';
+        let selectedLanguage = 'hi';
+        let subtitles = [];
+        let currentTime = 0;
+        let selectedSubtitle = null;
+        let duration = 0;
+        let isVideo = false;
+        let isPlaying = false;
+        let waveformData = [];
+        
+        // Timeline state
+        let viewStart = 0;
+        let viewDuration = 60;
+        let isDragging = false;
+        let dragType = '';
+        let dragSubtitle = null;
+        let dragStartX = 0;
+        let dragStartTime = 0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateLanguageDisplay();
+        });
+
+        function setupEventListeners() {
+            // File upload
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            
+            fileInput.addEventListener('change', handleFileSelect);
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleDrop);
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            // Language selection
+            const languageSelect = document.getElementById('languageSelect');
+            const customLanguage = document.getElementById('customLanguage');
+            
+            languageSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customLanguage.classList.remove('hidden');
+                    customLanguage.focus();
+                } else {
+                    customLanguage.classList.add('hidden');
+                    selectedLanguage = this.value;
+                    updateLanguageDisplay();
+                }
+            });
+
+            customLanguage.addEventListener('input', function() {
+                selectedLanguage = this.value || 'custom';
+                updateLanguageDisplay();
+            });
+
+            // Export language sync
+            const exportLanguageSelect = document.getElementById('exportLanguageSelect');
+            exportLanguageSelect.addEventListener('change', function() {
+                selectedLanguage = this.value;
+                updateLanguageDisplay();
+            });
+
+            // Subtitle editing
+            const startTime = document.getElementById('startTime');
+            const endTime = document.getElementById('endTime');
+            const subtitleText = document.getElementById('subtitleText');
+
+            startTime.addEventListener('input', updateSubtitleFromInputs);
+            endTime.addEventListener('input', updateSubtitleFromInputs);
+            subtitleText.addEventListener('input', updateSubtitleFromInputs);
+            
+            // Enter key to create new subtitle
+            subtitleText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    createNewSubtitle();
+                }
+            });
+
+            // Timeline canvas
+            const canvas = document.getElementById('timelineCanvas');
+            canvas.addEventListener('click', handleTimelineClick);
+            canvas.addEventListener('dblclick', handleTimelineDoubleClick);
+            canvas.addEventListener('mousedown', handleMouseDown);
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+
+            // Media events
+            const video = document.getElementById('videoElement');
+            const audio = document.getElementById('audioElement');
+            
+            [video, audio].forEach(element => {
+                element.addEventListener('timeupdate', handleTimeUpdate);
+                element.addEventListener('loadedmetadata', handleLoadedMetadata);
+                element.addEventListener('play', () => {
+                    isPlaying = true;
+                    updatePlayButton();
+                });
+                element.addEventListener('pause', () => {
+                    isPlaying = false;
+                    updatePlayButton();
+                });
+            });
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const validTypes = ['video/', 'audio/'];
+            if (!validTypes.some(type => file.type.startsWith(type))) {
+                showToast('Please select a valid video or audio file', 'error');
+                return;
+            }
+
+            mediaFile = file;
+            mediaUrl = URL.createObjectURL(file);
+            
+            checkMediaType().then(() => {
+                setupMediaPlayer();
+                generateWaveform();
+                showMediaSection();
+            });
+
+            showToast(`File "${file.name}" loaded successfully!`, 'success');
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                const fileInput = document.getElementById('fileInput');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+                handleFileSelect({ target: fileInput });
+            }
+        }
+
+        async function checkMediaType() {
+            const videoExtensions = /\.(mp4|webm|mov|avi|mkv|flv|wmv|m4v)$/i;
+            const audioExtensions = /\.(mp3|wav|ogg|m4a|aac|flac|wma)$/i;
+            
+            if (videoExtensions.test(mediaUrl)) {
+                isVideo = true;
+                return;
+            }
+            
+            if (audioExtensions.test(mediaUrl)) {
+                isVideo = false;
+                return;
+            }
+            
+            // For blob URLs, try to load as video first
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            
+            try {
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = () => {
+                        isVideo = video.videoWidth > 0 && video.videoHeight > 0;
+                        resolve();
+                    };
+                    video.onerror = () => {
+                        isVideo = false;
+                        resolve();
+                    };
+                    video.src = mediaUrl;
+                });
+            } catch {
+                isVideo = false;
+            }
+        }
+
+        function setupMediaPlayer() {
+            const video = document.getElementById('videoElement');
+            const audio = document.getElementById('audioElement');
+            const audioPlayer = document.getElementById('audioPlayer');
+            
+            if (isVideo) {
+                video.src = mediaUrl;
+                video.classList.remove('hidden');
+                audio.classList.add('hidden');
+                audioPlayer.classList.add('hidden');
+            } else {
+                audio.src = mediaUrl;
+                audio.classList.remove('hidden');
+                video.classList.add('hidden');
+                audioPlayer.classList.remove('hidden');
+            }
+        }
+
+        async function generateWaveform() {
+            try {
+                const response = await fetch(mediaUrl);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                const channelData = audioBuffer.getChannelData(0);
+                const samples = 1000;
+                const blockSize = Math.floor(channelData.length / samples);
+                
+                waveformData = [];
+                for (let i = 0; i < samples; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < blockSize; j++) {
+                        sum += Math.abs(channelData[i * blockSize + j] || 0);
+                    }
+                    waveformData.push(sum / blockSize);
+                }
+                
+                // Normalize
+                const max = Math.max(...waveformData);
+                if (max > 0) {
+                    waveformData = waveformData.map(value => value / max);
+                }
+            } catch (error) {
+                console.warn('Could not generate waveform:', error);
+                // Generate flat waveform as fallback
+                waveformData = new Array(1000).fill(0.1);
+            }
+            
+            drawTimeline();
+        }
+
+        function showMediaSection() {
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('mediaSection').classList.remove('hidden');
+        }
+
+        function updateLanguageDisplay() {
+            document.getElementById('currentLanguage').textContent = selectedLanguage.toUpperCase();
+            const exportSelect = document.getElementById('exportLanguageSelect');
+            exportSelect.value = selectedLanguage;
+        }
+
+        function handleTimeUpdate() {
+            const mediaElement = getCurrentMediaElement();
+            if (mediaElement) {
+                currentTime = mediaElement.currentTime;
+                updateCurrentTimeDisplay();
+                updateSubtitleOverlay();
+                drawTimeline();
+                
+                // Auto-scroll timeline
+                if (!isDragging && currentTime > viewStart + viewDuration * 0.9) {
+                    viewStart = Math.max(0, currentTime - viewDuration * 0.1);
+                    drawTimeline();
+                }
+            }
+        }
+
+        function handleLoadedMetadata() {
+            const mediaElement = getCurrentMediaElement();
+            if (mediaElement) {
+                duration = mediaElement.duration;
+                updateDurationDisplay();
+                drawTimeline();
+            }
+        }
+
+        function getCurrentMediaElement() {
+            return isVideo ? document.getElementById('videoElement') : document.getElementById('audioElement');
+        }
+
+        function togglePlayPause() {
+            const mediaElement = getCurrentMediaElement();
+            if (!mediaElement) return;
+
+            if (isPlaying) {
+                mediaElement.pause();
+            } else {
+                mediaElement.play();
+            }
+        }
+
+        function skipBackward() {
+            const mediaElement = getCurrentMediaElement();
+            if (mediaElement) {
+                const newTime = Math.max(0, mediaElement.currentTime - 10);
+                mediaElement.currentTime = newTime;
+                currentTime = newTime;
+            }
+        }
+
+        function skipForward() {
+            const mediaElement = getCurrentMediaElement();
+            if (mediaElement) {
+                const newTime = Math.min(duration, mediaElement.currentTime + 10);
+                mediaElement.currentTime = newTime;
+                currentTime = newTime;
+            }
+        }
+
+        function updatePlayButton() {
+            const playBtn = document.getElementById('audioPlayBtn');
+            if (playBtn) {
+                playBtn.textContent = isPlaying ? '⏸' : '▶';
+            }
+        }
+
+        function updateCurrentTimeDisplay() {
+            document.getElementById('currentTimeDisplay').textContent = formatTime(currentTime);
+        }
+
+        function updateDurationDisplay() {
+            document.getElementById('durationDisplay').textContent = formatTime(duration);
+        }
+
+        function updateSubtitleOverlay() {
+            const overlay = document.getElementById('subtitleOverlay');
+            const textEl = document.getElementById('subtitleText');
+            
+            const activeSubtitle = subtitles.find(sub => 
+                currentTime >= sub.startTime && 
+                currentTime <= sub.endTime && 
+                sub.text.trim()
+            );
+            
+            if (activeSubtitle) {
+                textEl.textContent = activeSubtitle.text;
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // Timeline functions
+        function panLeft() {
+            viewStart = Math.max(0, viewStart - viewDuration * 0.1);
+            drawTimeline();
+        }
+
+        function panRight() {
+            viewStart = Math.min(duration - viewDuration, viewStart + viewDuration * 0.1);
+            drawTimeline();
+        }
+
+        function zoomIn() {
+            const center = viewStart + viewDuration / 2;
+            viewDuration = Math.max(10, viewDuration * 0.5);
+            viewStart = Math.max(0, center - viewDuration / 2);
+            drawTimeline();
+        }
+
+        function zoomOut() {
+            const center = viewStart + viewDuration / 2;
+            viewDuration = Math.min(duration, viewDuration * 2);
+            if (viewDuration >= duration) {
+                viewStart = 0;
+                viewDuration = duration;
+            } else {
+                viewStart = Math.max(0, center - viewDuration / 2);
+            }
+            drawTimeline();
+        }
+
+        function drawTimeline() {
+            const canvas = document.getElementById('timelineCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            // Clear canvas
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--timeline-bg');
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw time markers
+            drawTimeMarkers(ctx, canvas.width, canvas.height);
+            
+            // Draw waveform
+            drawWaveform(ctx, canvas.width, canvas.height);
+            
+            // Draw subtitles
+            drawSubtitles(ctx, canvas.width, canvas.height);
+            
+            // Draw current time indicator
+            drawCurrentTimeIndicator(ctx, canvas.width, canvas.height);
+        }
+
+        function drawTimeMarkers(ctx, width, height) {
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--timeline-grid');
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground');
+            ctx.font = '10px sans-serif';
+            
+            const step = viewDuration > 120 ? 30 : viewDuration > 60 ? 10 : 5;
+            const startTime = Math.floor(viewStart / step) * step;
+            
+            for (let time = startTime; time <= viewStart + viewDuration; time += step) {
+                const x = ((time - viewStart) / viewDuration) * width;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+                
+                ctx.fillText(formatTime(time), x + 2, 12);
+            }
+        }
+
+        function drawWaveform(ctx, width, height) {
+            if (!waveformData.length) return;
+            
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--waveform');
+            
+            const waveformHeight = height * 0.3;
+            const waveformY = height - waveformHeight - 60;
+            
+            const samplesPerSecond = waveformData.length / duration;
+            const startSample = Math.floor(viewStart * samplesPerSecond);
+            const endSample = Math.floor((viewStart + viewDuration) * samplesPerSecond);
+            
+            for (let i = startSample; i < endSample && i < waveformData.length; i++) {
+                const x = ((i - startSample) / (endSample - startSample)) * width;
+                const amplitude = waveformData[i] * waveformHeight;
+                
+                ctx.fillRect(x, waveformY + waveformHeight/2 - amplitude/2, 2, amplitude);
+            }
+        }
+
+        function drawSubtitles(ctx, width, height) {
+            subtitles.forEach(subtitle => {
+                if (subtitle.endTime < viewStart || subtitle.startTime > viewStart + viewDuration) return;
+                
+                const startX = Math.max(0, ((subtitle.startTime - viewStart) / viewDuration) * width);
+                const endX = Math.min(width, ((subtitle.endTime - viewStart) / viewDuration) * width);
+                const subtitleWidth = endX - startX;
+                
+                if (subtitleWidth < 1) return;
+                
+                // Subtitle segment
+                ctx.fillStyle = subtitle === selectedSubtitle ? 
+                    getComputedStyle(document.documentElement).getPropertyValue('--subtitle-active') :
+                    getComputedStyle(document.documentElement).getPropertyValue('--subtitle-segment');
+                
+                ctx.fillRect(startX, height - 40, subtitleWidth, 20);
+                
+                // Subtitle text
+                if (subtitleWidth > 50) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '10px sans-serif';
+                    ctx.fillText(subtitle.text.substring(0, 20) + (subtitle.text.length > 20 ? '...' : ''), 
+                                 startX + 4, height - 26);
+                }
+                
+                // Resize handles
+                if (subtitle === selectedSubtitle) {
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(startX - 2, height - 40, 4, 20);
+                    ctx.fillRect(endX - 2, height - 40, 4, 20);
+                }
+            });
+        }
+
+        function drawCurrentTimeIndicator(ctx, width, height) {
+            if (currentTime < viewStart || currentTime > viewStart + viewDuration) return;
+            
+            const x = ((currentTime - viewStart) / viewDuration) * width;
+            
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+
+        function handleTimelineClick(event) {
+            const canvas = event.target;
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const time = getTimeFromPosition(x, canvas.width);
+            
+            // Check if clicking on a subtitle
+            const clickedSubtitle = subtitles.find(sub => 
+                time >= sub.startTime && time <= sub.endTime
+            );
+            
+            if (clickedSubtitle) {
+                selectSubtitle(clickedSubtitle);
+            } else {
+                seekTo(time);
+            }
+        }
+
+        function handleTimelineDoubleClick(event) {
+            const canvas = event.target;
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const time = getTimeFromPosition(x, canvas.width);
+            
+            createSubtitleAt(time);
+        }
+
+        function handleMouseDown(event) {
+            const canvas = event.target;
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const time = getTimeFromPosition(x, canvas.width);
+            
+            // Check for subtitle resize handles
+            const subtitle = subtitles.find(sub => {
+                const startX = ((sub.startTime - viewStart) / viewDuration) * canvas.width;
+                const endX = ((sub.endTime - viewStart) / viewDuration) * canvas.width;
+                
+                if (Math.abs(x - startX) < 5 && y > canvas.height - 40) {
+                    dragType = 'resize-left';
+                    return true;
+                } else if (Math.abs(x - endX) < 5 && y > canvas.height - 40) {
+                    dragType = 'resize-right';
+                    return true;
+                } else if (x >= startX && x <= endX && y > canvas.height - 40) {
+                    dragType = 'move';
+                    return true;
+                }
+                return false;
+            });
+            
+            if (subtitle) {
+                isDragging = true;
+                dragSubtitle = subtitle;
+                dragStartX = x;
+                dragStartTime = time;
+                selectSubtitle(subtitle);
+            } else {
+                // Playhead dragging
+                isDragging = true;
+                dragType = 'playhead';
+                seekTo(time);
+            }
+        }
+
+        function handleMouseMove(event) {
+            if (!isDragging || !dragSubtitle) {
+                if (dragType === 'playhead') {
+                    const canvas = document.getElementById('timelineCanvas');
+                    const rect = canvas.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const time = getTimeFromPosition(x, canvas.width);
+                    seekTo(time);
+                }
+                return;
+            }
+            
+            const canvas = document.getElementById('timelineCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const time = getTimeFromPosition(x, canvas.width);
+            const deltaTime = time - dragStartTime;
+            
+            const updatedSubtitle = { ...dragSubtitle };
+            
+            if (dragType === 'move') {
+                updatedSubtitle.startTime = Math.max(0, dragSubtitle.startTime + deltaTime);
+                updatedSubtitle.endTime = Math.min(duration, dragSubtitle.endTime + deltaTime);
+            } else if (dragType === 'resize-left') {
+                updatedSubtitle.startTime = Math.max(0, Math.min(time, dragSubtitle.endTime - 0.1));
+            } else if (dragType === 'resize-right') {
+                updatedSubtitle.endTime = Math.min(duration, Math.max(time, dragSubtitle.startTime + 0.1));
+            }
+            
+            updateSubtitle(updatedSubtitle);
+        }
+
+        function handleMouseUp() {
+            isDragging = false;
+            dragType = '';
+            dragSubtitle = null;
+            dragStartX = 0;
+            dragStartTime = 0;
+        }
+
+        function getTimeFromPosition(x, canvasWidth) {
+            return viewStart + (x / canvasWidth) * viewDuration;
+        }
+
+        function seekTo(time) {
+            const mediaElement = getCurrentMediaElement();
+            if (mediaElement) {
+                mediaElement.currentTime = time;
+                currentTime = time;
+                updateCurrentTimeDisplay();
+                updateSubtitleOverlay();
+            }
+        }
+
+        function createSubtitleAt(time) {
+            const newSubtitle = {
+                id: `subtitle-${Date.now()}`,
+                startTime: time,
+                endTime: Math.min(duration, time + 3),
+                text: ''
+            };
+            
+            subtitles.push(newSubtitle);
+            subtitles.sort((a, b) => a.startTime - b.startTime);
+            selectSubtitle(newSubtitle);
+            updateSubtitleList();
+            drawTimeline();
+        }
+
+        function selectSubtitle(subtitle) {
+            selectedSubtitle = subtitle;
+            updateSubtitleEditor();
+            updateSubtitleList();
+            drawTimeline();
+        }
+
+        function updateSubtitle(subtitle) {
+            const index = subtitles.findIndex(sub => sub.id === subtitle.id);
+            if (index !== -1) {
+                subtitles[index] = subtitle;
+                if (selectedSubtitle && selectedSubtitle.id === subtitle.id) {
+                    selectedSubtitle = subtitle;
+                    updateSubtitleEditor();
+                }
+                updateSubtitleList();
+                drawTimeline();
+            }
+        }
+
+        function updateSubtitleEditor() {
+            if (!selectedSubtitle) {
+                document.getElementById('startTime').value = '';
+                document.getElementById('endTime').value = '';
+                document.getElementById('subtitleText').value = '';
+                updateStats();
+                return;
+            }
+            
+            document.getElementById('startTime').value = formatTimeWithMs(selectedSubtitle.startTime);
+            document.getElementById('endTime').value = formatTimeWithMs(selectedSubtitle.endTime);
+            document.getElementById('subtitleText').value = selectedSubtitle.text;
+            updateStats();
+        }
+
+        function updateSubtitleFromInputs() {
+            if (!selectedSubtitle) return;
+            
+            const startTime = parseTime(document.getElementById('startTime').value);
+            const endTime = parseTime(document.getElementById('endTime').value);
+            const text = document.getElementById('subtitleText').value;
+            
+            const updatedSubtitle = {
+                ...selectedSubtitle,
+                startTime: Math.max(0, startTime),
+                endTime: Math.min(duration, Math.max(startTime + 0.1, endTime)),
+                text
+            };
+            
+            updateSubtitle(updatedSubtitle);
+            updateStats();
+        }
+
+        function updateStats() {
+            if (!selectedSubtitle) {
+                document.getElementById('durationStat').textContent = '0.0s';
+                document.getElementById('wordsStat').textContent = '0';
+                document.getElementById('wpmStat').textContent = '0';
+                document.getElementById('durationGuideline').textContent = 'N/A';
+                document.getElementById('speedGuideline').textContent = 'N/A';
+                return;
+            }
+            
+            const duration = selectedSubtitle.endTime - selectedSubtitle.startTime;
+            const words = selectedSubtitle.text.trim().split(/\s+/).length;
+            const wpm = duration > 0 ? Math.round((words / duration) * 60) : 0;
+            
+            document.getElementById('durationStat').textContent = `${duration.toFixed(1)}s`;
+            document.getElementById('wordsStat').textContent = words.toString();
+            document.getElementById('wpmStat').textContent = wpm.toString();
+            
+            // Guidelines
+            const durationGuideline = document.getElementById('durationGuideline');
+            const speedGuideline = document.getElementById('speedGuideline');
+            
+            if (duration < 1) {
+                durationGuideline.textContent = `Too short (${duration.toFixed(1)}s)`;
+                durationGuideline.className = 'guideline-error';
+            } else if (duration > 7) {
+                durationGuideline.textContent = `Too long (${duration.toFixed(1)}s)`;
+                durationGuideline.className = 'guideline-warning';
+            } else {
+                durationGuideline.textContent = `Good (${duration.toFixed(1)}s)`;
+                durationGuideline.className = 'guideline-good';
+            }
+            
+            if (wpm > 200) {
+                speedGuideline.textContent = `Too fast (${wpm} WPM)`;
+                speedGuideline.className = 'guideline-error';
+            } else if (wpm > 160) {
+                speedGuideline.textContent = `Fast (${wpm} WPM)`;
+                speedGuideline.className = 'guideline-warning';
+            } else {
+                speedGuideline.textContent = `Good (${wpm} WPM)`;
+                speedGuideline.className = 'guideline-good';
+            }
+        }
+
+        function updateSubtitleList() {
+            const listEl = document.getElementById('subtitleList');
+            
+            if (subtitles.length === 0) {
+                listEl.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--muted-foreground); font-size: 0.875rem;">No subtitles yet. Double-click on the timeline to create one.</div>';
+                return;
+            }
+            
+            listEl.innerHTML = subtitles.map(subtitle => {
+                const isActive = selectedSubtitle && selectedSubtitle.id === subtitle.id;
+                return `
+                    <div class="subtitle-item ${isActive ? 'active' : ''}" data-id="${subtitle.id}">
+                        <div class="subtitle-timing">${formatTimeWithMs(subtitle.startTime)} → ${formatTimeWithMs(subtitle.endTime)}</div>
+                        <div class="subtitle-preview">${subtitle.text || '(empty)'}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Add click listeners
+            listEl.querySelectorAll('.subtitle-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const id = item.dataset.id;
+                    const subtitle = subtitles.find(sub => sub.id === id);
+                    if (subtitle) {
+                        selectSubtitle(subtitle);
+                        seekTo(subtitle.startTime);
+                    }
+                });
+            });
+        }
+
+        function insertSubtitle() {
+            if (!selectedSubtitle) return;
+            
+            const currentIndex = subtitles.findIndex(sub => sub.id === selectedSubtitle.id);
+            const nextSubtitle = subtitles[currentIndex + 1];
+            
+            const startTime = selectedSubtitle.endTime;
+            const endTime = nextSubtitle ? 
+                Math.min(nextSubtitle.startTime, startTime + 3) : 
+                Math.min(duration, startTime + 3);
+            
+            const newSubtitle = {
+                id: `subtitle-${Date.now()}`,
+                startTime,
+                endTime,
+                text: ''
+            };
+            
+            subtitles.splice(currentIndex + 1, 0, newSubtitle);
+            selectSubtitle(newSubtitle);
+            updateSubtitleList();
+            drawTimeline();
+        }
+
+        function deleteSubtitle() {
+            if (!selectedSubtitle) return;
+            
+            subtitles = subtitles.filter(sub => sub.id !== selectedSubtitle.id);
+            selectedSubtitle = null;
+            updateSubtitleEditor();
+            updateSubtitleList();
+            drawTimeline();
+        }
+
+        function createNewSubtitle() {
+            const endTime = selectedSubtitle ? selectedSubtitle.endTime : currentTime;
+            createSubtitleAt(endTime);
+        }
+
+        // Export functions
+        function downloadSRT() {
+            if (subtitles.length === 0) {
+                showToast('No subtitles to export', 'error');
+                return;
+            }
+            
+            let srt = '';
+            subtitles.forEach((subtitle, index) => {
+                srt += `${index + 1}\n`;
+                srt += `${formatSRTTime(subtitle.startTime)} --> ${formatSRTTime(subtitle.endTime)}\n`;
+                srt += `${subtitle.text}\n\n`;
+            });
+            
+            const fileName = getExportFileName('srt');
+            downloadFile(srt, fileName, 'text/plain');
+        }
+
+        function downloadVTT() {
+            if (subtitles.length === 0) {
+                showToast('No subtitles to export', 'error');
+                return;
+            }
+            
+            let vtt = 'WEBVTT\n\n';
+            subtitles.forEach(subtitle => {
+                vtt += `${formatVTTTime(subtitle.startTime)} --> ${formatVTTTime(subtitle.endTime)}\n`;
+                vtt += `${subtitle.text}\n\n`;
+            });
+            
+            const fileName = getExportFileName('vtt');
+            downloadFile(vtt, fileName, 'text/vtt');
+        }
+
+        function downloadPlaintext(withTimestamps) {
+            if (subtitles.length === 0) {
+                showToast('No subtitles to export', 'error');
+                return;
+            }
+            
+            let content = '';
+            subtitles.forEach(subtitle => {
+                if (withTimestamps) {
+                    content += `[${formatTimeWithMs(subtitle.startTime)}] ${subtitle.text}\n`;
+                } else {
+                    content += `${subtitle.text}\n`;
+                }
+            });
+            
+            const fileName = getExportFileName('txt');
+            downloadFile(content, fileName, 'text/plain');
+        }
+
+        function getExportFileName(extension) {
+            const baseName = mediaFile ? mediaFile.name.replace(/\.[^/.]+$/, '') : 'subtitles';
+            const languageSuffix = selectedLanguage !== 'en' ? `-${selectedLanguage}` : '';
+            return `${baseName}${languageSuffix}.${extension}`;
+        }
+
+        function downloadFile(content, fileName, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast(`Downloaded ${fileName}`, 'success');
+        }
+
+        // Utility functions
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatTimeWithMs(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+            return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        }
+
+        function formatSRTTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+        }
+
+        function formatVTTTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            const ms = Math.floor((seconds % 1) * 1000);
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        }
+
+        function parseTime(timeStr) {
+            const parts = timeStr.split(':');
+            if (parts.length !== 2) return 0;
+            
+            const mins = parseInt(parts[0]) || 0;
+            const secsParts = parts[1].split('.');
+            const secs = parseInt(secsParts[0]) || 0;
+            const ms = parseInt(secsParts[1]) || 0;
+            
+            return mins * 60 + secs + ms / 1000;
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 3000);
+        }
+
+        // Initialize timeline drawing
+        window.addEventListener('resize', () => {
+            setTimeout(drawTimeline, 100);
+        });
+    </script>
+</body>
+</html>
