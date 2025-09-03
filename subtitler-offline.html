@@ -308,13 +308,39 @@
             background-color: var(--subtitle-segment);
             border-radius: 0.25rem;
             padding: 0.25rem;
-            cursor: pointer;
+            cursor: move;
             transition: all 0.2s;
             color: white;
             font-size: 0.75rem;
             display: flex;
             align-items: center;
             min-height: 24px;
+            user-select: none;
+        }
+        
+        .subtitle-segment .resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: rgba(255,255,255,0.3);
+            cursor: ew-resize;
+        }
+        
+        .subtitle-segment .resize-handle.left {
+            left: 0;
+            border-radius: 0.25rem 0 0 0.25rem;
+        }
+        
+        .subtitle-segment .resize-handle.right {
+            right: 0;
+            border-radius: 0 0.25rem 0.25rem 0;
+        }
+        
+        .subtitle-segment.dragging {
+            opacity: 0.8;
+            transform: scale(1.05);
+            z-index: 20;
         }
 
         .subtitle-segment:hover {
@@ -773,11 +799,11 @@
                     <video class="video-player" id="video-player" preload="metadata"></video>
                     <audio id="audio-player" preload="metadata"></audio>
                     
-                    <!-- Video Controls -->
                     <div class="video-controls">
                         <button class="control-button" id="rewind-btn">⏪</button>
                         <button class="control-button" id="play-pause-btn">▶️</button>
                         <button class="control-button" id="forward-btn">⏩</button>
+                        <button class="control-button" id="new-video-btn">📁 Load New</button>
                     </div>
                     
                     <!-- Subtitle Overlay -->
@@ -920,25 +946,17 @@
                         </div>
                         <div class="download-content">
                             <div class="format-grid">
-                                <button class="format-button" data-format="srt-timestamps">
-                                    <div class="format-name">SRT with timestamps</div>
-                                    <div class="format-desc">Standard subtitle format</div>
+                                <button class="format-button" data-format="srt">
+                                    <div class="format-name">SRT</div>
+                                    <div class="format-desc">Standard subtitle format with timestamps</div>
                                 </button>
-                                <button class="format-button" data-format="srt-no-timestamps">
-                                    <div class="format-name">SRT without timestamps</div>
-                                    <div class="format-desc">Text only version</div>
-                                </button>
-                                <button class="format-button" data-format="vtt-timestamps">
-                                    <div class="format-name">VTT with timestamps</div>
-                                    <div class="format-desc">WebVTT format</div>
-                                </button>
-                                <button class="format-button" data-format="vtt-no-timestamps">
-                                    <div class="format-name">VTT without timestamps</div>
-                                    <div class="format-desc">Text only version</div>
+                                <button class="format-button" data-format="vtt">
+                                    <div class="format-name">VTT</div>
+                                    <div class="format-desc">WebVTT format with timestamps</div>
                                 </button>
                                 <button class="format-button" data-format="txt-timestamps">
                                     <div class="format-name">Plain text with timestamps</div>
-                                    <div class="format-desc">Simple text format</div>
+                                    <div class="format-desc">Simple text format with timing</div>
                                 </button>
                                 <button class="format-button" data-format="txt-no-timestamps">
                                     <div class="format-name">Plain text without timestamps</div>
@@ -969,6 +987,26 @@
         let isPlaying = false;
         let waveformData = [];
         let autoSaveTimeout = null;
+        let isDragging = false;
+        let dragData = {};
+
+        // Language code mapping
+        const languageCodes = {
+            'english': 'en',
+            'hindi': 'hi',
+            'bengali': 'bn',
+            'tamil': 'ta',
+            'telugu': 'te',
+            'kannada': 'kn',
+            'malayalam': 'ml',
+            'marathi': 'mr',
+            'gujarati': 'gu',
+            'punjabi': 'pa',
+            'urdu': 'ur',
+            'odia': 'or',
+            'assamese': 'as',
+            'nepali': 'ne'
+        };
 
         // DOM Elements
         const uploadSection = document.getElementById('upload-section');
@@ -980,6 +1018,7 @@
         const playPauseBtn = document.getElementById('play-pause-btn');
         const rewindBtn = document.getElementById('rewind-btn');
         const forwardBtn = document.getElementById('forward-btn');
+        const newVideoBtn = document.getElementById('new-video-btn');
         const timeline = document.getElementById('timeline');
         const playhead = document.getElementById('playhead');
         const waveform = document.getElementById('waveform');
@@ -1182,6 +1221,9 @@
                 isPlaying = false;
                 playPauseBtn.textContent = '▶️';
             });
+            
+            // Add click to play/pause functionality
+            mediaElement.addEventListener('click', togglePlayPause);
         }
 
         // Media Controls
@@ -1189,6 +1231,36 @@
             playPauseBtn.addEventListener('click', togglePlayPause);
             rewindBtn.addEventListener('click', () => seek(currentTime - 10));
             forwardBtn.addEventListener('click', () => seek(currentTime + 10));
+            newVideoBtn.addEventListener('click', loadNewVideo);
+        }
+        
+        function loadNewVideo() {
+            // Reset everything
+            if (mediaUrl) {
+                URL.revokeObjectURL(mediaUrl);
+            }
+            
+            mediaFile = null;
+            mediaUrl = null;
+            subtitles = [];
+            selectedSubtitle = null;
+            currentTime = 0;
+            duration = 0;
+            isPlaying = false;
+            waveformData = [];
+            
+            // Hide media section and show upload section
+            mediaSection.classList.add('hidden');
+            uploadSection.classList.remove('hidden');
+            
+            // Clear file input
+            fileInput.value = '';
+            
+            // Update UI
+            updateWorkspace();
+            updateSubtitlesList();
+            updateSubtitleCount();
+            playPauseBtn.textContent = '▶️';
         }
 
         function togglePlayPause() {
@@ -1303,14 +1375,114 @@
                     element.classList.add('selected');
                 }
                 
-                element.addEventListener('click', (e) => {
+                // Add resize handles
+                const leftHandle = document.createElement('div');
+                leftHandle.className = 'resize-handle left';
+                const rightHandle = document.createElement('div');
+                rightHandle.className = 'resize-handle right';
+                element.appendChild(leftHandle);
+                element.appendChild(rightHandle);
+                
+                // Set data attribute for tracking
+                element.setAttribute('data-subtitle-id', subtitle.id);
+                
+                // Add drag event listeners
+                element.addEventListener('mousedown', (e) => handleDragStart(e, subtitle, 'move'));
+                leftHandle.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
-                    selectSubtitle(subtitle);
-                    seek(subtitle.startTime);
+                    handleDragStart(e, subtitle, 'resize-left');
+                });
+                rightHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    handleDragStart(e, subtitle, 'resize-right');
+                });
+                
+                element.addEventListener('click', (e) => {
+                    if (!isDragging) {
+                        e.stopPropagation();
+                        selectSubtitle(subtitle);
+                        seek(subtitle.startTime);
+                    }
                 });
                 
                 subtitlesTimeline.appendChild(element);
             });
+        }
+        
+        function handleDragStart(e, subtitle, dragType) {
+            e.preventDefault();
+            isDragging = true;
+            dragData = {
+                subtitle: subtitle,
+                type: dragType,
+                startX: e.clientX,
+                originalStartTime: subtitle.startTime,
+                originalEndTime: subtitle.endTime,
+                timelineRect: timeline.getBoundingClientRect()
+            };
+            
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+            
+            if (dragType === 'move') {
+                document.querySelector(`[data-subtitle-id="${subtitle.id}"]`)?.classList.add('dragging');
+            }
+        }
+        
+        function handleDragMove(e) {
+            if (!isDragging || !dragData.subtitle) return;
+            
+            const deltaX = e.clientX - dragData.startX;
+            const deltaTime = (deltaX / dragData.timelineRect.width) * duration;
+            
+            let updatedSubtitle = { ...dragData.subtitle };
+            
+            switch (dragData.type) {
+                case 'move':
+                    const newStartTime = Math.max(0, dragData.originalStartTime + deltaTime);
+                    const subtitleDuration = dragData.originalEndTime - dragData.originalStartTime;
+                    const newEndTime = Math.min(duration, newStartTime + subtitleDuration);
+                    updatedSubtitle.startTime = newStartTime;
+                    updatedSubtitle.endTime = newEndTime;
+                    break;
+                    
+                case 'resize-left':
+                    updatedSubtitle.startTime = Math.max(0, Math.min(dragData.originalStartTime + deltaTime, dragData.originalEndTime - 0.1));
+                    break;
+                    
+                case 'resize-right':
+                    updatedSubtitle.endTime = Math.min(duration, Math.max(dragData.originalEndTime + deltaTime, dragData.originalStartTime + 0.1));
+                    break;
+            }
+            
+            // Update the visual position immediately
+            dragData.subtitle = updatedSubtitle;
+            const element = document.querySelector(`[data-subtitle-id="${updatedSubtitle.id}"]`);
+            if (element) {
+                const startPercent = (updatedSubtitle.startTime / duration) * 100;
+                const endPercent = (updatedSubtitle.endTime / duration) * 100;
+                element.style.left = `${startPercent}%`;
+                element.style.width = `${endPercent - startPercent}%`;
+            }
+        }
+        
+        function handleDragEnd() {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('mouseup', handleDragEnd);
+            
+            if (dragData.subtitle) {
+                // Update the actual subtitle data
+                updateSubtitle(dragData.subtitle);
+                
+                // Remove dragging class
+                document.querySelector(`[data-subtitle-id="${dragData.subtitle.id}"]`)?.classList.remove('dragging');
+            }
+            
+            dragData = {};
+            updateTimeline();
         }
 
         // Subtitle Management
@@ -1589,32 +1761,25 @@
             }
             
             const baseFileName = mediaFile ? mediaFile.name.replace(/\.[^/.]+$/, "") : "subtitles";
-            const languageSuffix = selectedLanguage !== 'english' ? `-${selectedLanguage}` : '';
+            const langCode = languageCodes[selectedLanguage] || selectedLanguage.substring(0, 2);
+            const languageSuffix = selectedLanguage !== 'english' ? `-${langCode}` : '';
             
             let content = '';
             let fileName = '';
             let mimeType = 'text/plain';
             
             switch (format) {
-                case 'srt-timestamps':
-                    content = generateSRT(true);
+                case 'srt':
+                    content = generateSRT();
                     fileName = `${baseFileName}${languageSuffix}.srt`;
                     break;
-                case 'srt-no-timestamps':
-                    content = generateSRT(false);
-                    fileName = `${baseFileName}${languageSuffix}-text.srt`;
-                    break;
-                case 'vtt-timestamps':
-                    content = generateVTT(true);
+                case 'vtt':
+                    content = generateVTT();
                     fileName = `${baseFileName}${languageSuffix}.vtt`;
-                    break;
-                case 'vtt-no-timestamps':
-                    content = generateVTT(false);
-                    fileName = `${baseFileName}${languageSuffix}-text.vtt`;
                     break;
                 case 'txt-timestamps':
                     content = generateTXT(true);
-                    fileName = `${baseFileName}${languageSuffix}.txt`;
+                    fileName = `${baseFileName}${languageSuffix}-timestamped.txt`;
                     break;
                 case 'txt-no-timestamps':
                     content = generateTXT(false);
@@ -1625,33 +1790,25 @@
             downloadFile(content, fileName, mimeType);
         }
 
-        function generateSRT(includeTimestamps) {
+        function generateSRT() {
             const sortedSubtitles = subtitles.sort((a, b) => a.startTime - b.startTime);
             
             return sortedSubtitles.map((subtitle, index) => {
-                if (includeTimestamps) {
-                    const start = formatSRTTime(subtitle.startTime);
-                    const end = formatSRTTime(subtitle.endTime);
-                    return `${index + 1}\n${start} --> ${end}\n${subtitle.text}\n`;
-                } else {
-                    return subtitle.text;
-                }
-            }).join(includeTimestamps ? '\n' : '\n\n');
+                const start = formatSRTTime(subtitle.startTime);
+                const end = formatSRTTime(subtitle.endTime);
+                return `${index + 1}\n${start} --> ${end}\n${subtitle.text}\n`;
+            }).join('\n');
         }
 
-        function generateVTT(includeTimestamps) {
+        function generateVTT() {
             const sortedSubtitles = subtitles.sort((a, b) => a.startTime - b.startTime);
-            let content = includeTimestamps ? 'WEBVTT\n\n' : '';
+            let content = 'WEBVTT\n\n';
             
             content += sortedSubtitles.map((subtitle, index) => {
-                if (includeTimestamps) {
-                    const start = formatVTTTime(subtitle.startTime);
-                    const end = formatVTTTime(subtitle.endTime);
-                    return `${start} --> ${end}\n${subtitle.text}\n`;
-                } else {
-                    return subtitle.text;
-                }
-            }).join(includeTimestamps ? '\n' : '\n\n');
+                const start = formatVTTTime(subtitle.startTime);
+                const end = formatVTTTime(subtitle.endTime);
+                return `${start} --> ${end}\n${subtitle.text}\n`;
+            }).join('\n');
             
             return content;
         }
